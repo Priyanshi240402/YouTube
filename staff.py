@@ -1,20 +1,19 @@
 import mysql.connector
 import urllib.request
 from bs4 import BeautifulSoup
-from flask import Flask, request, jsonify
-
-app = Flask(__name__)
 
 def scrape_channel_data(page_soup):
     # Extract data from the web scraping
     uploads = page_soup.findAll("span", {"id": "youtube-stats-header-uploads"})
     subs = page_soup.findAll("span", {"id": "youtube-stats-header-subs"})
     views = page_soup.findAll("span", {"id": "youtube-stats-header-views"})
+    country = page_soup.findAll("span", {"id": "youtube-stats-header-country"})
+    channeltype = page_soup.findAll("span", {"id": "youtube-stats-header-channeltype"})
 
-    # Assuming you want to return the text values of uploads, subscribers, and views
+    # Assuming you want to return the text values of uploads, subscribers, and country
     return [uploads[0].text if uploads else None, subs[0].text if subs else None, views[0].text if views else None]
 
-def fetch_and_store_youtube_data(channel_url, channel_id):
+def fetch_and_store_youtube_data(channel_url, channelId):
     # Fetch HTML content
     user_agent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.7) Gecko/2009021910 Firefox/3.0.7'
     headers = {'User-Agent': user_agent}
@@ -38,21 +37,16 @@ def fetch_and_store_youtube_data(channel_url, channel_id):
     # Create a cursor object to interact with the database
     mycursor = mydb.cursor()
 
-    # Assuming you have a table named 'youtubeanalytics'
+    # Assuming you have a table named 'analysis' with columns (channel_id, videos_published, audience, views)
     table_name = 'youtubeanalytics'
-
-    # Check if channel_id column exists, if not, add it
-    mycursor.execute(f"SHOW COLUMNS FROM {table_name} LIKE 'channel_id'")
-    if mycursor.fetchone() is None:
-        mycursor.execute(f"ALTER TABLE {table_name} ADD COLUMN channel_id VARCHAR(255)")
 
     # Extract data from the scraped results
     scraped_data = scrape_channel_data(page_soup)
 
     # Insert data into the MySQL table
-    sql = f"INSERT INTO {table_name} (channel_id, videos_published, audience, views) VALUES (%s, %s, %s, %s)"
-    scraped_data_with_channel_id = [channel_id] + scraped_data
-    mycursor.execute(sql, scraped_data_with_channel_id)
+    sql = f"INSERT INTO {table_name} (channelId, videos_published, audience, views) VALUES (%s, %s, %s, %s)"
+    scraped_data_with_channelId = [channelId] + scraped_data
+    mycursor.execute(sql, scraped_data_with_channelId)
 
     # Commit the changes to the database
     mydb.commit()
@@ -61,13 +55,17 @@ def fetch_and_store_youtube_data(channel_url, channel_id):
     mycursor.close()
     mydb.close()
 
-    return jsonify({"status": "success", "message": "Data stored successfully"})
+# Example usage:
+# Replace 'your_channel_url' and 'your_channel_id' with the actual YouTube channel URL and ID
+def fetch_and_store_youtube_data_by_id(channelId):
+    channel_url = f'https://socialblade.com/youtube/channel/{channelId}'
+    fetch_and_store_youtube_data(channel_url, channelId)
 
-@app.route('/fetch_and_store_youtube_data', methods=['POST'])
-def fetch_and_store_youtube_data_api():
-    data = request.json
-    channel_url = f'https://socialblade.com/youtube/channel/{data["channel_id"]}'
-    return fetch_and_store_youtube_data(channel_url, data["channel_id"])
-
-if __name__ == '__main__':
-    app.run(debug=True)
+# Example usage:
+# Replace 'your_channel_id' with the actual YouTube channel ID
+fetch_and_store_youtube_data_by_id('UCFFbwnve3yF62-tVXkTyHqg')
+fetch_and_store_youtube_data_by_id('UCq-Fj5jknLsUf-MWSy4_brA')
+fetch_and_store_youtube_data_by_id('UC_A7K2dXFsTMAciGmnNxy-Q')
+fetch_and_store_youtube_data_by_id('UCX52tYZiEh_mHoFja3Veciw')
+fetch_and_store_youtube_data_by_id('UCyoXW-Dse7fURq30EWl_CUA')
+fetch_and_store_youtube_data_by_id('UCM1VesJtJ9vTXcMLLr_FfdQ')
