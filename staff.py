@@ -1,16 +1,20 @@
 import mysql.connector
+# api/fetch_youtube_data.py
+
+import mysql.connector
 import urllib.request
 from bs4 import BeautifulSoup
+from fastapi import FastAPI
+
+app = FastAPI()
 
 def scrape_channel_data(page_soup):
     # Extract data from the web scraping
     uploads = page_soup.findAll("span", {"id": "youtube-stats-header-uploads"})
     subs = page_soup.findAll("span", {"id": "youtube-stats-header-subs"})
     views = page_soup.findAll("span", {"id": "youtube-stats-header-views"})
-    country = page_soup.findAll("span", {"id": "youtube-stats-header-country"})
-    channeltype = page_soup.findAll("span", {"id": "youtube-stats-header-channeltype"})
 
-    # Assuming you want to return the text values of uploads, subscribers, and country
+    # Assuming you want to return the text values of uploads, subscribers, and views
     return [uploads[0].text if uploads else None, subs[0].text if subs else None, views[0].text if views else None]
 
 def fetch_and_store_youtube_data(channel_url, channelId):
@@ -55,17 +59,9 @@ def fetch_and_store_youtube_data(channel_url, channelId):
     mycursor.close()
     mydb.close()
 
-# Example usage:
-# Replace 'your_channel_url' and 'your_channel_id' with the actual YouTube channel URL and ID
-def fetch_and_store_youtube_data_by_id(channelId):
+@app.post("/fetch_youtube_data/{channelId}")
+def fetch_youtube_data_by_id(channelId: str):
     channel_url = f'https://socialblade.com/youtube/channel/{channelId}'
     fetch_and_store_youtube_data(channel_url, channelId)
+    return {"message": "Data fetched and stored successfully!"}
 
-# Example usage:
-# Replace 'your_channel_id' with the actual YouTube channel ID
-fetch_and_store_youtube_data_by_id('UCFFbwnve3yF62-tVXkTyHqg')
-fetch_and_store_youtube_data_by_id('UCq-Fj5jknLsUf-MWSy4_brA')
-fetch_and_store_youtube_data_by_id('UC_A7K2dXFsTMAciGmnNxy-Q')
-fetch_and_store_youtube_data_by_id('UCX52tYZiEh_mHoFja3Veciw')
-fetch_and_store_youtube_data_by_id('UCyoXW-Dse7fURq30EWl_CUA')
-fetch_and_store_youtube_data_by_id('UCM1VesJtJ9vTXcMLLr_FfdQ')
